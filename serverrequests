@@ -1,0 +1,163 @@
+# Гайд по запросам к Wildberries API через сервер
+
+## Введение
+Этот гайд объясняет, как использовать наш сервер (`server.js`) для запросов к Wildberries API. Сервер выступает прокси: принимает запросы от Chrome-расширения, отправляет их к API Wildberries, кэширует ответы и возвращает данные. Это решает проблемы с ограничениями браузера и снижает нагрузку на API.
+
+## Основные эндпоинты
+Сервер поддерживает два эндпоинта:
+- **`/api/orders`** — для получения заказов.
+- **`/api/stocks`** — для получения остатков.
+
+### Обязательные параметры
+- `apiToken` — API-ключ Wildberries (нужен для всех запросов).
+- Для `/api/orders` также требуются:
+  - `dateFrom` — начальная дата (формат `YYYY-MM-DD`).
+  - `dateTo` — конечная дата (формат `YYYY-MM-DD`).
+
+### Кэширование
+- Данные кэшируются на 5 минут, чтобы не превышать лимиты API Wildberries.
+
+## Примеры запросов
+
+### 1. Запрос заказов
+- **URL**: `http://109.73.194.128:3000/api/orders?apiToken=<ваш_api_ключ>&dateFrom=2025-05-01&dateTo=2025-05-07`
+- **Метод**: GET
+- **Ответ**: JSON с данными о заказах за указанный период.
+
+#### Пример с curl
+```bash
+curl "http://109.73.194.128:3000/api/orders?apiToken=ваш_api_ключ&dateFrom=2025-05-01&dateTo=2025-05-07"
+```
+
+#### Пример ответа
+```json
+[
+  {
+    "orderId": "12345",
+    "date": "2025-05-02",
+    "status": "completed"
+  },
+  ...
+]
+```
+
+### 2. Запрос остатков
+- **URL**: `http://109.73.194.128:3000/api/stocks?apiToken=<ваш_api_ключ>`
+- **Метод**: GET
+- **Ответ**: JSON с данными об остатках.
+
+#### Пример с curl
+```bash
+curl "http://109.73.194.128:3000/api/stocks?apiToken=ваш_api_ключ"
+```
+
+#### Пример ответа
+```json
+[
+  {
+    "sku": "ABC123",
+    "quantity": 10
+  },
+  ...
+]
+```
+
+## Как использовать в Chrome-расширении
+В файле `content.js` или `background.js` можно отправлять запросы так:
+
+```javascript
+const apiToken = 'ваш_api_ключ';
+const dateFrom = '2025-05-01';
+const dateTo = '2025-05-07';
+
+fetch(`http://109.73.194.128:3000/api/orders?apiToken=${apiToken}&dateFrom=${dateFrom}&dateTo=${dateTo}`)
+  .then(response => response.json())
+  .then(data => console.log('Заказы:', data))
+  .catch(error => console.error('Ошибка:', error));
+```
+
+## Полный код сервера
+Вот как сервер обрабатывает запросы:
+
+```javascript
+const express = require('express');
+const fetch = require('node-fetch');
+const cors = require('cors');
+
+const app = express();
+const PORT = 3000;
+
+app.use(cors());
+app.use(express.json());
+
+let cachedData = { stocks: [], orders: [], lastUpdated: 0 };
+const CACHE_DURATION = 5 * 60 * 1000; // 5 минут
+
+// Эндпоинт для заказов
+app.get('/api/orders', async (req, res) => {
+  const { apiToken, dateFrom, dateTo } = req.query;
+  if (!apiToken || !dateFrom || !dateTo) {
+    return res.status(400).json({ error: 'Нужны apiToken, dateFrom и dateTo' });
+  }
+
+  const now = Date.now();
+  if (cachedData.orders.length > 0 && now - cachedData.lastUpdated < CACHE_DURATION) {
+    return res.json(cachedData.orders);
+  }
+
+  try {
+    const response = await fetch(
+      `https://suppliers-api.wildberries.ru/api/v1/supplier/orders?dateFrom=${dateFrom}&dateTo=${dateTo}`,
+      { headers: { Authorization: `Bearer ${apiToken}` } }
+    );
+    if (!response.ok) throw new Error(`Ошибка API: ${response.status}`);
+    const data = await response.json();
+    cachedData.orders = data;
+    cachedData.lastUpdated = now;
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Эндпоинт для остатков
+app.get('/api/stocks', async (req, res) => {
+  const { apiToken } = req.query;
+  if (!apiToken) return res.status(400).json({ error: 'Нужен apiToken' });
+
+  const now = Date.now();
+  if (cachedData.stocks.length > 0 && now - cachedData.lastUpdated < CACHE_DURATION) {
+    return res.json(cachedData.stocks);
+  }
+
+  try {
+    const response = await fetch(
+      'https://suppliers-api.wildberries.ru/api/v1/supplier/stocks?dateFrom=2025-01-01',
+      { headers: { Authorization: `Bearer ${apiToken}` } }
+    );
+    if (!response.ok) throw new Error(`Ошибка API: ${response.status}`);
+    const data = await response.json();
+    cachedData.stocks = data;
+    cachedData.lastUpdated = now;
+    res.json(data);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Запуск сервера
+app.listen(PORT, () => console.log(`Сервер запущен на порту ${PORT}`));
+```
+
+## Важные заметки
+- Замени `<ваш_api_ключ>` на реальный API-ключ Wildberries.
+- IP сервера в примерах — `109.73.194.128`. Если твой сервер на другом IP, подставь свой.
+- Убедись, что сервер запущен (`node server.js`) и порт 3000 открыт.
+- Для HTTPS настрой SSL (например, через Let’s Encrypt).
+
+## Что делать, если не работает
+- Проверь логи сервера — там будет видно, где ошибка.
+- Убедись, что `apiToken` валидный и не просрочен.
+- Если ошибка 429 — слишком много запросов, кэш должен помочь, но проверь лимиты API.
+
+Теперь всё в одном месте — бери и юзай!
