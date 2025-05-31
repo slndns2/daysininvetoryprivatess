@@ -1,0 +1,812 @@
+# Методичка для разработчиков проекта "Дни До Нуля"
+
+## Введение
+
+Данная методичка предназначена для разработчиков и нейросетей, работающих над проектом "Дни До Нуля". Документ содержит подробные инструкции по настройке окружения, структуре проекта, используемым API и рекомендации по разработке.
+
+## Настройка окружения разработки
+
+### Серверная часть
+
+1. **Требования**
+   - Node.js версии 14.x или выше
+   - npm версии 6.x или выше
+   - Доступ к API Wildberries (API-ключ)
+
+2. **Установка зависимостей**
+   ```bash
+   # Клонирование репозитория
+   git clone https://github.com/username/days-to-zero-server.git
+   cd days-to-zero-server
+
+   # Установка зависимостей
+   npm install express node-fetch cors
+
+   # Запуск сервера
+   node server.js
+   ```
+
+3. **Структура проекта**
+   ```
+   days-to-zero-server/
+   ├── node_modules/
+   ├── server.js        # Основной файл сервера
+   ├── package.json     # Описание проекта и зависимости
+   └── README.md        # Документация
+   ```
+
+4. **Пример package.json**
+   ```json
+   {
+     "name": "days-to-zero-server",
+     "version": "1.0.0",
+     "description": "Proxy server for Wildberries API",
+     "main": "server.js",
+     "scripts": {
+       "start": "node server.js"
+     },
+     "dependencies": {
+       "express": "^4.17.1",
+       "node-fetch": "^2.6.1",
+       "cors": "^2.8.5"
+     }
+   }
+   ```
+
+### Клиентская часть
+
+1. **Требования**
+   - Chrome Browser для разработки и тестирования
+   - Базовые знания HTML, CSS и JavaScript
+
+2. **Структура проекта**
+   ```
+   days-to-zero-extension/
+   ├── manifest.json       # Манифест расширения
+   ├── content.js          # Content Script
+   ├── background.js       # Background Script
+   ├── popup/
+   │   ├── popup.html      # HTML для popup
+   │   ├── popup.css       # Стили для popup
+   │   └── popup.js        # JavaScript для popup
+   └── icons/              # Иконки расширения
+   ```
+
+3. **Пример manifest.json**
+   ```json
+   {
+     "name": "Дни До Нуля",
+     "version": "1.0",
+     "description": "Расчет дней до нуля и потребности к поставке для товаров на Wildberries",
+     "manifest_version": 3,
+     "permissions": ["storage", "activeTab"],
+     "host_permissions": ["*://*.wildberries.ru/*"],
+     "background": {
+       "service_worker": "background.js"
+     },
+     "content_scripts": [
+       {
+         "matches": ["*://*.wildberries.ru/*"],
+         "js": ["content.js"]
+       }
+     ],
+     "action": {
+       "default_popup": "popup/popup.html",
+       "default_icon": {
+         "16": "icons/icon16.png",
+         "48": "icons/icon48.png",
+         "128": "icons/icon128.png"
+       }
+     },
+     "icons": {
+       "16": "icons/icon16.png",
+       "48": "icons/icon48.png",
+       "128": "icons/icon128.png"
+     }
+   }
+   ```
+
+4. **Установка расширения в Chrome для разработки**
+   - Откройте Chrome и перейдите на страницу `chrome://extensions/`
+   - Включите "Режим разработчика"
+   - Нажмите "Загрузить распакованное расширение"
+   - Выберите папку с проектом расширения
+
+## Работа с API Wildberries
+
+### Авторизация
+
+Для работы с API Wildberries необходимо использовать API-ключ. Ключ должен содержать параметр `kid` (Key ID) в заголовке JWT.
+
+Пример правильного формата ключа:
+```
+eyJhbGciOiJFUzI1NiIsImtpZCI6IjIwMjUwMjE3djEiLCJ0eXAiOiJKV1QifQ.eyJlbnQiOjEsImV4cCI6MTc1ODI2OTkzMCwiaWQiOiIwMTk1YjUzNS02NDY1LTc5MTItOWVhMi04YzRiNjI4Yzk5YjEiLCJpaWQiOjE2OTUxOTYwLCJvaWQiOjQwMjM3NiwicyI6MzgzOCwic2lkIjoiZGNkYTFiODktOTk3My00OGMwLWE0YmUtYzQ0MTM5ZDczMmI3IiwidCI6ZmFsc2UsInVpZCI6MTY5NTE5NjB9._BEjIyvC0njOWvhBCL0k4hqJj9g8x1KPLTtcdwhM5lJe9bSF4cj-nO8_z0sDxnC4_tCvW0msAvKOg7xzEPKRsQ
+```
+
+Ключ передается в заголовке `Authorization` при выполнении запросов к API.
+
+### Основные эндпоинты
+
+1. **Остатки товаров**
+   - URL: `https://statistics-api.wildberries.ru/api/v1/supplier/stocks`
+   - Метод: GET
+   - Параметры: dateFrom (обязательный)
+   - Пример запроса:
+     ```javascript
+     const response = await fetch('https://statistics-api.wildberries.ru/api/v1/supplier/stocks?dateFrom=2025-05-17', {
+       headers: {
+         'Authorization': apiKey
+       }
+     });
+     ```
+
+2. **Заказы**
+   - URL: `https://statistics-api.wildberries.ru/api/v1/supplier/orders`
+   - Метод: GET
+   - Параметры: dateFrom (обязательный), dateTo (обязательный)
+   - Пример запроса:
+     ```javascript
+     const response = await fetch('https://statistics-api.wildberries.ru/api/v1/supplier/orders?dateFrom=2025-05-17&dateTo=2025-05-24', {
+       headers: {
+         'Authorization': apiKey
+       }
+     });
+     ```
+
+### Обработка ошибок
+
+При работе с API Wildberries могут возникать следующие ошибки:
+
+1. **401 Unauthorized**
+   - Причина: Неправильный формат API-ключа или отсутствие необходимых разрешений
+   - Решение: Проверить формат ключа и его права доступа
+
+2. **500 Internal Server Error**
+   - Причина: Отсутствие обязательных параметров dateFrom и dateTo
+   - Решение: Добавить обязательные параметры в запрос
+
+## Реализация основных алгоритмов
+
+### Расчет средних продаж
+
+```javascript
+/**
+ * Рассчитывает средние продажи в день для указанного артикула
+ * @param {Array} orders - Массив заказов
+ * @param {string} articleId - Артикул товара
+ * @param {number} days - Количество дней для анализа (по умолчанию 7)
+ * @returns {number} - Среднее количество продаж в день
+ */
+function calculateAverageSales(orders, articleId, days = 7) {
+  // Фильтруем заказы по артикулу
+  const filteredOrders = orders.filter(order => order.supplierArticle === articleId);
+  
+  // Подсчитываем количество заказов
+  const orderCount = filteredOrders.length;
+  
+  // Рассчитываем средние продажи
+  return orderCount / days;
+}
+```
+
+### Расчет дней до нуля
+
+```javascript
+/**
+ * Рассчитывает количество дней до полного исчерпания товара
+ * @param {number} currentStock - Текущий остаток товара
+ * @param {number} averageSales - Средние продажи в день
+ * @returns {number} - Количество дней до нуля (или Infinity, если нет продаж)
+ */
+function calculateDaysToZero(currentStock, averageSales) {
+  if (averageSales === 0) {
+    return Infinity; // Бесконечность, если нет продаж
+  }
+  return currentStock / averageSales;
+}
+```
+
+### Расчет потребности к поставке
+
+```javascript
+/**
+ * Рассчитывает количество товара для следующей поставки
+ * @param {number} averageSales - Средние продажи в день
+ * @param {number} currentStock - Текущий остаток товара
+ * @param {number} desiredDays - Желаемый запас в днях (по умолчанию 30)
+ * @returns {number} - Количество товара для поставки
+ */
+function calculateSupplyNeed(averageSales, currentStock, desiredDays = 30) {
+  const need = averageSales * desiredDays - currentStock;
+  return need > 0 ? need : 0;
+}
+```
+
+### Определение цветового статуса
+
+```javascript
+/**
+ * Определяет цветовой статус на основе дней до нуля
+ * @param {number} daysToZero - Количество дней до нуля
+ * @returns {string} - Цветовой статус (red, orange, green)
+ */
+function getStatusColor(daysToZero) {
+  if (daysToZero <= 7) {
+    return 'red'; // Критический запас
+  } else if (daysToZero <= 14) {
+    return 'orange'; // Низкий запас
+  } else {
+    return 'green'; // Нормальный запас
+  }
+}
+```
+
+## Рекомендации по разработке
+
+### Общие рекомендации
+
+1. **Следуйте принципам чистого кода**
+   - Используйте осмысленные имена переменных и функций
+   - Разделяйте код на небольшие функции с одной ответственностью
+   - Комментируйте сложные участки кода
+
+2. **Обрабатывайте ошибки**
+   - Всегда обрабатывайте ошибки при работе с API
+   - Логируйте ошибки для последующего анализа
+   - Предоставляйте пользователю информативные сообщения об ошибках
+
+3. **Оптимизируйте производительность**
+   - Используйте кэширование для уменьшения количества запросов к API
+   - Минимизируйте количество DOM-операций в плагине
+   - Используйте дебаунсинг для функций, вызываемых часто
+
+### Рекомендации для серверной части
+
+1. **Настройте CORS правильно**
+   ```javascript
+   app.use((req, res, next) => {
+     res.header('Access-Control-Allow-Origin', '*');
+     res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+     res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+     if (req.method === 'OPTIONS') {
+       return res.status(200).end();
+     }
+     next();
+   });
+   ```
+
+2. **Автоматически добавляйте параметры dateFrom и dateTo**
+   ```javascript
+   // Функция для получения дат за последние 7 дней
+   function getLast7Days() {
+     const today = new Date();
+     const sevenDaysAgo = new Date(today);
+     sevenDaysAgo.setDate(today.getDate() - 7);
+     
+     return {
+       dateFrom: sevenDaysAgo.toISOString().split('T')[0],
+       dateTo: today.toISOString().split('T')[0]
+     };
+   }
+
+   // Использование в обработчике запросов
+   app.get('/api/orders', async (req, res) => {
+     // ...
+     const { dateFrom, dateTo } = getLast7Days();
+     const params = { 
+       ...req.query, 
+       dateFrom: req.query.dateFrom || dateFrom,
+       dateTo: req.query.dateTo || dateTo
+     };
+     // ...
+   });
+   ```
+
+### Рекомендации для клиентской части
+
+1. **Сохраняйте API-ключ безопасно**
+   ```javascript
+   // Сохранение API-ключа
+   function saveApiKey(apiKey) {
+     return new Promise((resolve) => {
+       chrome.storage.local.set({ apiKey }, resolve);
+     });
+   }
+
+   // Получение API-ключа
+   function getApiKey() {
+     return new Promise((resolve) => {
+       chrome.storage.local.get('apiKey', (result) => {
+         resolve(result.apiKey || null);
+       });
+     });
+   }
+   ```
+
+2. **Используйте MutationObserver для отслеживания изменений DOM**
+   ```javascript
+   // Создаем наблюдатель за изменениями DOM
+   const observer = new MutationObserver((mutations) => {
+     for (const mutation of mutations) {
+       if (mutation.type === 'childList') {
+         // Проверяем, добавились ли новые элементы товаров
+         const productElements = Array.from(mutation.addedNodes)
+           .filter(node => node.nodeType === Node.ELEMENT_NODE)
+           .filter(element => element.matches('.product-card'));
+         
+         if (productElements.length > 0) {
+           processProductElements(productElements);
+         }
+       }
+     }
+   });
+
+   // Начинаем наблюдение за изменениями в DOM
+   observer.observe(document.body, {
+     childList: true,
+     subtree: true
+   });
+   ```
+
+## Тестирование
+
+### Тестирование серверной части
+
+1. **Проверка доступности сервера**
+   ```bash
+   curl http://localhost:3000/
+   ```
+
+2. **Проверка эндпоинта stocks**
+   ```bash
+   curl -H "Authorization: YOUR_API_KEY" "http://localhost:3000/api/stocks?dateFrom=2025-05-17"
+   ```
+
+3. **Проверка эндпоинта orders**
+   ```bash
+   curl -H "Authorization: YOUR_API_KEY" "http://localhost:3000/api/orders?dateFrom=2025-05-17&dateTo=2025-05-24"
+   ```
+
+### Тестирование клиентской части
+
+1. **Ручное тестирование**
+   - Установите расширение в Chrome
+   - Откройте страницу Wildberries с товарами
+   - Проверьте, что информация о днях до нуля отображается корректно
+   - Проверьте, что цветовая индикация соответствует ожидаемой
+
+## Деплой
+
+### Деплой серверной части
+
+1. **Подготовка к деплою**
+   ```bash
+   # Установка PM2
+   npm install -g pm2
+
+   # Создание файла экосистемы PM2
+   echo '{
+     "apps": [{
+       "name": "days-to-zero-server",
+       "script": "server.js",
+       "instances": 1,
+       "autorestart": true,
+       "watch": false,
+       "max_memory_restart": "1G",
+       "env": {
+         "NODE_ENV": "production",
+         "PORT": 3000
+       }
+     }]
+   }' > ecosystem.config.js
+   ```
+
+2. **Деплой на сервер**
+   ```bash
+   # Запуск приложения с PM2
+   pm2 start ecosystem.config.js
+   ```
+
+### Публикация расширения
+
+1. **Подготовка к публикации**
+   ```bash
+   # Упаковка расширения в ZIP-архив
+   zip -r days-to-zero-extension.zip *
+   ```
+
+2. **Публикация в Chrome Web Store**
+   - Перейдите на [Chrome Developer Dashboard](https://chrome.google.com/webstore/devconsole)
+   - Нажмите "Новый элемент"
+   - Загрузите ZIP-архив с расширением
+   - Заполните информацию о расширении
+   - Отправьте расширение на проверку
+
+## Примеры кода
+
+### Пример серверной части (server.js)
+
+```javascript
+const express = require('express');
+const fetch = require('node-fetch');
+
+const app = express();
+
+// Настройка CORS
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  next();
+});
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Функция для получения дат за последние 7 дней
+function getLast7Days() {
+  const today = new Date();
+  const sevenDaysAgo = new Date(today);
+  sevenDaysAgo.setDate(today.getDate() - 7);
+  
+  return {
+    dateFrom: sevenDaysAgo.toISOString().split('T')[0],
+    dateTo: today.toISOString().split('T')[0]
+  };
+}
+
+// Эндпоинт для получения заказов
+app.get('/api/orders', async (req, res) => {
+  try {
+    const { apiToken } = req.query;
+    const { dateFrom, dateTo } = getLast7Days();
+    const queryDateFrom = req.query.dateFrom || dateFrom;
+    const queryDateTo = req.query.dateTo || dateTo;
+    
+    console.log(`Fetching orders: dateFrom=${queryDateFrom}, dateTo=${queryDateTo}`);
+    const url = `https://statistics-api.wildberries.ru/api/v1/supplier/orders?dateFrom=${queryDateFrom}&dateTo=${queryDateTo}`;
+    const response = await fetch(url, {
+      headers: { Authorization: apiToken }
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! Status: ${response.status}, StatusText: ${response.statusText}, Response: ${errorText}`);
+    }
+    
+    const data = await response.json();
+    console.log("Orders response:", data);
+    res.status(200).json(data);
+  } catch (error) {
+    console.error("Error fetching orders:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Эндпоинт для получения остатков
+app.get('/api/stocks', async (req, res) => {
+  try {
+    const { apiToken } = req.query;
+    const { dateFrom } = getLast7Days();
+    const queryDateFrom = req.query.dateFrom || dateFrom;
+    
+    console.log(`Fetching stocks: dateFrom=${queryDateFrom}`);
+    const url = `https://statistics-api.wildberries.ru/api/v1/supplier/stocks?dateFrom=${queryDateFrom}`;
+    const response = await fetch(url, {
+      headers: { Authorization: apiToken }
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HTTP error! Status: ${response.status}, StatusText: ${response.statusText}, Response: ${errorText}`);
+    }
+    
+    const data = await response.json();
+    console.log("Stocks response:", data);
+
+    const stockDict = {};
+    data.forEach(stock => {
+      const article = stock.supplierArticle;
+      const qty = stock.quantity || 0;
+      const barcode = stock.barcode || "Нет данных";
+      if (stockDict[article]) {
+        stockDict[article].quantity += qty;
+      } else {
+        stockDict[article] = { quantity: qty, barcode };
+      }
+    });
+
+    const stocks = Object.entries(stockDict).map(([article, { quantity, barcode }]) => ({
+      supplierArticle: article,
+      quantity,
+      barcode
+    }));
+    
+    console.log("Processed stocks:", stocks);
+    res.status(200).json(stocks);
+  } catch (error) {
+    console.error("Error fetching stocks:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Маршрут для проверки работоспособности
+app.get('/', (req, res) => {
+  res.send('Сервер "Дни До Нуля" работает!');
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+```
+
+### Пример клиентской части (content.js)
+
+```javascript
+// Глобальные переменные
+let calculationData = {};
+let observerActive = false;
+let processingRows = false;
+
+// Инициализация плагина
+async function initPlugin() {
+  // Проверка авторизации
+  const token = await getToken();
+  if (!token) {
+    console.log('User not authenticated, showing auth popup');
+    chrome.runtime.sendMessage({ action: 'showAuthPopup' });
+    return;
+  }
+  
+  // Добавление стилей
+  addStyles();
+  
+  // Запуск наблюдателя за DOM
+  startObserver();
+  
+  // Добавление кнопки обновления
+  addRefreshButton();
+  
+  console.log('Days To Zero plugin initialized');
+}
+
+// Получение токена авторизации
+async function getToken() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get(['authToken'], (result) => {
+      resolve(result.authToken || null);
+    });
+  });
+}
+
+// Добавление стилей
+function addStyles() {
+  const styleElement = document.createElement('style');
+  styleElement.textContent = `
+    .dtz-indicator {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-weight: bold;
+      position: relative;
+    }
+    
+    .dtz-indicator--green {
+      background-color: rgba(0, 200, 0, 0.2);
+      color: #006400;
+    }
+    
+    .dtz-indicator--orange {
+      background-color: rgba(255, 165, 0, 0.2);
+      color: #FF8C00;
+    }
+    
+    .dtz-indicator--red {
+      background-color: rgba(255, 0, 0, 0.2);
+      color: #B22222;
+    }
+    
+    .dtz-supply-need {
+      font-size: 10px;
+      font-weight: normal;
+      margin-top: 2px;
+      white-space: nowrap;
+      color: #333;
+    }
+    
+    .dtz-refresh-button {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      padding: 5px 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    
+    .dtz-refresh-button:hover {
+      background-color: #45a049;
+    }
+  `;
+  document.head.appendChild(styleElement);
+}
+
+// Запуск наблюдателя за DOM
+function startObserver() {
+  if (observerActive) return;
+  
+  const observer = new MutationObserver((mutations) => {
+    if (processingRows) return;
+    
+    const tableRows = document.querySelectorAll('.goods-table__row:not(.goods-table__row--header)');
+    if (tableRows.length > 0) {
+      processTableRows(tableRows);
+    }
+  });
+  
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
+  
+  observerActive = true;
+  console.log('DOM observer started');
+}
+
+// Обработка строк таблицы
+async function processTableRows(rows) {
+  processingRows = true;
+  
+  try {
+    // Собираем артикулы товаров
+    const articles = [];
+    rows.forEach(row => {
+      const articleElement = row.querySelector('.goods-table__cell--article');
+      if (articleElement) {
+        const article = articleElement.textContent.trim();
+        if (article) {
+          articles.push(article);
+        }
+      }
+    });
+    
+    if (articles.length === 0) {
+      processingRows = false;
+      return;
+    }
+    
+    // Получаем данные для расчетов
+    const newData = await fetchCalculationData(articles);
+    if (newData && newData.results) {
+      // Обновляем кэш данных
+      newData.results.forEach(item => {
+        calculationData[item.article] = item;
+      });
+      
+      // Обновляем отображение
+      updateStockDisplay(rows);
+    }
+  } catch (error) {
+    console.error('Error processing table rows:', error);
+  } finally {
+    processingRows = false;
+  }
+}
+
+// Получение данных расчетов с сервера
+async function fetchCalculationData(articles) {
+  try {
+    const token = await getToken();
+    if (!token) {
+      throw new Error('User not authenticated');
+    }
+    
+    const response = await fetch('http://localhost:3000/api/calculate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': token
+      },
+      body: JSON.stringify({ articles })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching calculation data:', error);
+    return null;
+  }
+}
+
+// Обновление отображения остатков
+function updateStockDisplay(rows) {
+  rows.forEach(row => {
+    try {
+      // Получаем артикул товара
+      const articleElement = row.querySelector('.goods-table__cell--article');
+      if (!articleElement) return;
+      
+      const article = articleElement.textContent.trim();
+      if (!article || !calculationData[article]) return;
+      
+      // Получаем ячейку с остатком
+      const stockCell = row.querySelector('.goods-table__cell:nth-child(5)');
+      if (!stockCell) return;
+      
+      const stockTextElement = stockCell.querySelector('.goods-table__cell-text');
+      if (!stockTextElement) return;
+      
+      // Получаем данные расчета
+      const data = calculationData[article];
+      
+      // Создаем индикатор
+      const stockValue = stockTextElement.textContent.trim();
+      const indicatorClass = `dtz-indicator--${data.colorIndication}`;
+      
+      // Формируем текст всплывающей подсказки
+      let tooltipText = `Остаток: ${data.totalStock} шт.\n`;
+      tooltipText += `Средние продажи: ${data.avgSalesPerDay.toFixed(2)} шт./день\n`;
+      tooltipText += `Дни до нуля: ${data.daysToZero}\n`;
+      
+      if (data.supplyNeed > 0) {
+        tooltipText += `Потребность к поставке: ${data.supplyNeed} шт.\n`;
+      }
+      
+      // Создаем HTML для индикатора
+      let indicatorHTML = `
+        <div class="dtz-indicator ${indicatorClass}" title="${tooltipText}">
+          <span>${stockValue}</span>
+      `;
+      
+      // Добавляем информацию о потребности к поставке для оранжевых и красных индикаторов
+      if (data.colorIndication === 'orange' || data.colorIndication === 'red') {
+        indicatorHTML += `
+          <div class="dtz-supply-need">потребность к поставке: ${data.supplyNeed} шт.</div>
+        `;
+      }
+      
+      indicatorHTML += `</div>`;
+      
+      // Обновляем DOM
+      stockTextElement.innerHTML = indicatorHTML;
+    } catch (error) {
+      console.error('Error updating stock display for row:', error);
+    }
+  });
+}
+
+// Добавление кнопки обновления
+function addRefreshButton() {
+  const button = document.createElement('button');
+  button.className = 'dtz-refresh-button';
+  button.textContent = 'Обновить расчеты';
+  button.addEventListener('click', () => {
+    const tableRows = document.querySelectorAll('.goods-table__row:not(.goods-table__row--header)');
+    if (tableRows.length > 0) {
+      // Очищаем кэш данных
+      calculationData = {};
+      // Запускаем обработку заново
+      processTableRows(tableRows);
+    }
+  });
+  
+  document.body.appendChild(button);
+}
+
+// Запуск плагина при загрузке страницы
+window.addEventListener('load', initPlugin);
+```
+
+## Заключение
+
+Данная методичка содержит основные инструкции и рекомендации для разработки проекта "Дни До Нуля". При возникновении вопросов или проблем рекомендуется обращаться к официальной документации Wildberries API или к разработчикам проекта.
